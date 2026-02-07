@@ -1,0 +1,11 @@
+
+<suite name="OpenCart Automation Suite" parallel="false">
+
+    <test name="OpenCart Tests">
+        <classes>
+            <!-- Cucumber TestNG Runner -->
+            <class name="runners.TestRunner"/>
+        </classes>
+    </test>
+
+</suite>
