@@ -18,13 +18,15 @@
 
     <!-- ================= PROPERTIES ================= -->
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.release>11</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <selenium.version>4.17.0</selenium.version>
         <cucumber.version>7.14.0</cucumber.version>
         <testng.version>7.9.0</testng.version>
+        <webdrivermanager.version>5.6.3</webdrivermanager.version>
+        <extent.version>5.1.1</extent.version>
+        <log4j.version>2.23.1</log4j.version>
     </properties>
 
     <!-- ================= DEPENDENCIES ================= -->
@@ -63,10 +65,10 @@
         <dependency>
             <groupId>io.github.bonigarcia</groupId>
             <artifactId>webdrivermanager</artifactId>
-            <version>5.6.3</version>
+            <version>${webdrivermanager.version}</version>
         </dependency>
 
-        <!-- Apache Commons IO (Screenshots) -->
+        <!-- Apache Commons IO -->
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
@@ -77,38 +79,33 @@
         <dependency>
             <groupId>com.aventstack</groupId>
             <artifactId>extentreports</artifactId>
-            <version>5.1.1</version>
+            <version>${extent.version}</version>
         </dependency>
 
-        <!-- Log4j (Optional but professional) -->
+        <!-- Log4j -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>2.23.1</version>
+            <version>${log4j.version}</version>
         </dependency>
 
-        <dependency>
-        	<groupId>amazon</groupId>
-        	<artifactId>automation</artifactId>
-        	<version>1.0</version>
-        </dependency>
-        <dependency>
-        	<groupId>com.saucedemo</groupId>
-        	<artifactId>ParallelPOMFramework</artifactId>
-        	<version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-        	<groupId>windowTabHandle</groupId>
-        	<artifactId>windowTabHandle</artifactId>
-        	<version>0.0.1-SNAPSHOT</version>
-        </dependency>
     </dependencies>
 
     <!-- ================= BUILD PLUGINS ================= -->
     <build>
         <plugins>
 
-            <!-- Maven Surefire -->
+            <!-- Maven Compiler -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <release>11</release>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Surefire (TestNG + Cucumber) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -117,6 +114,7 @@
                     <includes>
                         <include>**/TestRunner.java</include>
                     </includes>
+                    <testFailureIgnore>false</testFailureIgnore>
                 </configuration>
             </plugin>
 
