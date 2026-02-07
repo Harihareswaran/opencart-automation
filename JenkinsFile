@@ -1,0 +1,141 @@
+pipeline {
+    agent any
+    
+    tools {
+        maven 'Maven-3.9.6' // Configure this name in Jenkins Global Tool Configuration
+        jdk 'JDK-11'        // Configure this name in Jenkins Global Tool Configuration
+    }
+    
+    parameters {
+        choice(name: 'BROWSER', choices: ['chrome', 'firefox', 'edge'], description: 'Select browser for test execution')
+        choice(name: 'TEST_SUITE', choices: ['@Smoke', '@Regression', '@E2E', '@Integration', '@Negative', '@Smoke or @Regression'], description: 'Select test suite to run')
+    }
+    
+    environment {
+        // You can override these in Jenkins credentials
+        OPENCART_URL = 'http://localhost/opencart/'
+        OPENCART_USERNAME = 'admin'
+        OPENCART_PASSWORD = 'admin123'
+    }
+    
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo '================ Checking out code from GitHub ================'
+                git branch: 'main',
+                    credentialsId: 'github-credentials', // You'll create this in Jenkins
+                    url: 'https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git'
+                
+                echo 'Code checkout completed successfully!'
+            }
+        }
+        
+        stage('Build Project') {
+            steps {
+                echo '================ Building Maven Project ================'
+                script {
+                    if (isUnix()) {
+                        sh 'mvn clean compile'
+                    } else {
+                        bat 'mvn clean compile'
+                    }
+                }
+                echo 'Build completed successfully!'
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                echo "================ Running ${params.TEST_SUITE} Tests on ${params.BROWSER} ================"
+                script {
+                    try {
+                        if (isUnix()) {
+                            sh """
+                                mvn clean test \
+                                -Dcucumber.filter.tags='${params.TEST_SUITE}' \
+                                -Dbrowser=${params.BROWSER} \
+                                -Durl=${env.OPENCART_URL}
+                            """
+                        } else {
+                            bat """
+                                mvn clean test ^
+                                -Dcucumber.filter.tags="${params.TEST_SUITE}" ^
+                                -Dbrowser=${params.BROWSER} ^
+                                -Durl=${env.OPENCART_URL}
+                            """
+                        }
+                    } catch (Exception e) {
+                        currentBuild.result = 'UNSTABLE'
+                        echo "Tests failed but continuing pipeline: ${e.getMessage()}"
+                    }
+                }
+            }
+        }
+        
+        stage('Generate Reports') {
+            steps {
+                echo '================ Generating Test Reports ================'
+                // Cucumber HTML Report
+                cucumber buildStatus: 'UNSTABLE',
+                    reportTitle: 'OpenCart Automation Report',
+                    fileIncludePattern: '**/*.json',
+                    jsonReportDirectory: 'reports'
+            }
+        }
+        
+        stage('Archive Artifacts') {
+            steps {
+                echo '================ Archiving Test Artifacts ================'
+                // Archive screenshots and reports
+                archiveArtifacts artifacts: 'reports/**/*', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'reports/screenshots/**/*', allowEmptyArchive: true
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '================ Cleaning Workspace ================'
+            cleanWs()
+        }
+        
+        success {
+            echo '✅ Pipeline executed successfully!'
+            emailext (
+                subject: "✅ SUCCESS: OpenCart Automation - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Build Successful! ✅</h2>
+                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                    <p><strong>Test Suite:</strong> ${params.TEST_SUITE}</p>
+                    <p><strong>Browser:</strong> ${params.BROWSER}</p>
+                    <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                """,
+                to: 'your-email@example.com',
+                mimeType: 'text/html'
+            )
+        }
+        
+        failure {
+            echo '❌ Pipeline failed!'
+            emailext (
+                subject: "❌ FAILURE: OpenCart Automation - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Build Failed! ❌</h2>
+                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                    <p><strong>Test Suite:</strong> ${params.TEST_SUITE}</p>
+                    <p><strong>Browser:</strong> ${params.BROWSER}</p>
+                    <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    <p>Please check the console output for details.</p>
+                """,
+                to: 'your-email@example.com',
+                mimeType: 'text/html'
+            )
+        }
+        
+        unstable {
+            echo '⚠️ Pipeline unstable - Some tests failed!'
+        }
+    }
+}
